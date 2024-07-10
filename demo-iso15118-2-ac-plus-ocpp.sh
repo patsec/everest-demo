@@ -139,6 +139,9 @@ if [[ "$DEMO_VERSION" != v1.6j  && "$DEMO_CSMS" == maeve ]]; then
     patch -p1 -i ../everest-demo/maeve/maeve-csms-no-wss.patch
   fi
 
+  export UID=$(id -u)
+  export GID=$(id -g)
+
   docker compose build
   docker compose up -d
 

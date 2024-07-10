@@ -2,10 +2,12 @@ version: "3.6"
 
 services:
   mqtt-server:
-    image: ghcr.io/everest/everest-demo/mqtt-server:${TAG}
+    image: eclipse-mosquitto:2.0.18
     platform: linux/x86_64
     logging:
       driver: none
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
 
   manager:
     image: ghcr.io/everest/everest-demo/manager:${TAG}
