@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 
 
-DEMO_REPO="https://github.com/everest/everest-demo.git"
-DEMO_BRANCH="main"
+DEMO_REPO="https://github.com/patsec/everest-demo.git"
+DEMO_BRANCH="mre_eonti_ocsp"
 
-MAEVE_REPO="https://github.com/louisg1337/maeve-csms.git"
-# MAEVE_BRANCH="b990d0eddf2bf80be8d9524a7b08029fbb305c7d" # patch files are based on this commit
-MAEVE_BRANCH="set_charging_profile"
+MAEVE_REPO="https://github.com/sahabulh/maeve-csms.git"
+MAEVE_BRANCH="mre_eonti_ocsp"
 
 CITRINEOS_REPO="https://github.com/citrineos/citrineos-core.git"
 CITRINEOS_BRANCH="feature/everest-demo"
@@ -99,23 +98,20 @@ if [[ "$DEMO_VERSION" != v1.6j  && "$DEMO_CSMS" == maeve ]]; then
 
   pushd maeve-csms || exit 1
 
-  cp ../everest-demo/manager/cached_certs_correct_name_emaid.tar.gz .
-
-  echo "Patching the CSMS to disable load balancer"
-  patch -p1 -i ../everest-demo/maeve/maeve-csms-no-lb.patch
+  cp ../everest-demo/manager/eonti_certs.tar.gz certs.tar.gz
 
   # Set up certificates for SP2 and SP3
   if [[ "$DEMO_VERSION" =~ sp2 || "$DEMO_VERSION" =~ sp3 ]]; then
     echo "Copying certs into ${DEMO_DIR}/maeve-csms/config/certificates"
-    tar xf cached_certs_correct_name_emaid.tar.gz
-    cat dist/etc/everest/certs/client/csms/CSMS_LEAF.pem \
+    tar xf certs.tar.gz
+    cat dist/etc/everest/certs/client/csms_server/CSMS_SERVER.pem \
         dist/etc/everest/certs/ca/csms/CPO_SUB_CA2.pem \
         dist/etc/everest/certs/ca/csms/CPO_SUB_CA1.pem \
       > config/certificates/csms.pem
     cat dist/etc/everest/certs/ca/csms/CPO_SUB_CA2.pem \
         dist/etc/everest/certs/ca/csms/CPO_SUB_CA1.pem \
       > config/certificates/trust.pem
-    cp dist/etc/everest/certs/client/csms/CSMS_LEAF.key config/certificates/csms.key
+    cp dist/etc/everest/certs/client/csms_server/CSMS_SERVER.key config/certificates/csms.key
     cp dist/etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem config/certificates/root-V2G-cert.pem
     cp dist/etc/everest/certs/ca/mo/MO_ROOT_CA.pem config/certificates/root-MO-cert.pem
 
@@ -125,13 +121,7 @@ if [[ "$DEMO_VERSION" != v1.6j  && "$DEMO_CSMS" == maeve ]]; then
       -untrusted config/certificates/trust.pem \
       config/certificates/csms.pem
 
-    echo "Patching the CSMS to enable EVerest organization"
-    patch -p1 -i ../everest-demo/maeve/maeve-csms-everest-org.patch
-
-    echo "Patching the CSMS to enable local mo root"
-    patch -p1 -i ../everest-demo/maeve/maeve-csms-local-mo-root.patch
-
-    echo "Patching the CSMS to enable local mo root"
+    echo "Patching the CSMS to ignore OCSP response"
     patch -p1 -i ../everest-demo/maeve/maeve-csms-ignore-ocsp.patch
 
   else
@@ -171,7 +161,7 @@ if [[ "$DEMO_VERSION" != v1.6j  && "$DEMO_CSMS" == maeve ]]; then
     "cacheMode": "ALWAYS"
   }'
 
-  curl http://localhost:9410/api/v0/token -H 'content-type: application/json' -d '{"countryCode": "UK", "partyId": "Switch", "contractId": "UKSWI123456789G", "uid": "UKSWI123456789G", "issuer": "Switch", "valid": true, "cacheMode": "ALWAYS"}'
+  curl http://localhost:9410/api/v0/token -H 'content-type: application/json' -d '{"countryCode": "USA", "partyId": "EonTi", "contractId": "USCPIC001LTON3", "uid": "USCPIC001LTON3", "issuer": "EonTi", "valid": true, "cacheMode": "ALWAYS"}'
 
   popd || exit 1
 fi
@@ -183,12 +173,12 @@ if [[ "$DEMO_VERSION" != v1.6j  && "$DEMO_CSMS" == 'citrineos' ]]; then
 
   pushd citrineos-csms || exit 1
 
-  cp ../everest-demo/manager/cached_certs_correct_name_emaid.tar.gz .
+  cp ../everest-demo/manager/eonti_certs.tar.gz certs.tar.gz
 
   mkdir -p Server/data/certificates
 
   echo "Copying certs into ${DEMO_DIR}/citrineos-csms/Server/data/certificates"
-  tar xf cached_certs_correct_name_emaid.tar.gz
+  tar xf certs.tar.gz
 
   # Leaf key
   cp dist/etc/everest/certs/client/csms/CSMS_LEAF.key Server/data/certificates/leafKey.pem
@@ -232,8 +222,8 @@ echo "API calls to CSMS finished, Starting everest"
 docker compose --project-name everest-ac-demo --file "${DEMO_COMPOSE_FILE_NAME}" up -d --wait
 docker cp config-sil-ocpp201-pnc.yaml  everest-ac-demo-manager-1:/ext/source/config/config-sil-ocpp201-pnc.yaml
 if [[ "$DEMO_VERSION" =~ sp2 || "$DEMO_VERSION" =~ sp3 ]]; then
-  docker cp manager/cached_certs_correct_name_emaid.tar.gz everest-ac-demo-manager-1:/ext/source/build
-  docker exec everest-ac-demo-manager-1 /bin/bash -c "pushd /ext/source/build && tar xf cached_certs_correct_name_emaid.tar.gz"
+  docker cp manager/eonti_certs.tar.gz everest-ac-demo-manager-1:/ext/source/build/certs.tar.gz
+  docker exec everest-ac-demo-manager-1 /bin/bash -c "pushd /ext/source/build && tar xf certs.tar.gz"
 
   echo "Configured everest certs, validating that the chain is set up correctly"
   docker exec everest-ac-demo-manager-1 /bin/bash -c "pushd /ext/source/build && openssl verify -show_chain -CAfile dist/etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem --untrusted dist/etc/everest/certs/ca/csms/CPO_SUB_CA1.pem --untrusted dist/etc/everest/certs/ca/csms/CPO_SUB_CA2.pem dist/etc/everest/certs/client/csms/CSMS_LEAF.pem"
