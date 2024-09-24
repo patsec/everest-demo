@@ -93,7 +93,6 @@ echo "CSMS URL:     $CSMS_URL"
 mkdir "${DEMO_DIR}/everest-demo" || exit 1
 cp -a * "${DEMO_DIR}/everest-demo/" || exit 1
 cp -a .env "${DEMO_DIR}/everest-demo/.env" || exit 1
-tree "${DEMO_DIR}"
 
 cd "${DEMO_DIR}" || exit 1
 
