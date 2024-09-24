@@ -74,8 +74,11 @@ if [[ ! "${DEMO_DIR}" || ! -d "${DEMO_DIR}" ]]; then
 fi
 
 delete_temporary_directory() {
+	echo "Cleaning up Docker Compose project $PROJECT"
 	docker compose -p $PROJECT down
-	rm -rf "${DEMO_DIR}"
+
+	echo "Cleaning up temporary demo directory $DEMO_DIR"
+	rm -rf "$DEMO_DIR"
 }
 
 trap delete_temporary_directory EXIT
@@ -87,10 +90,15 @@ echo "DEMO CONFIG:  $DEMO_COMPOSE_FILE_NAME"
 echo "DEMO DIR:     $DEMO_DIR"
 echo "CSMS URL:     $CSMS_URL"
 
+mkdir "${DEMO_DIR}/everest-demo" || exit 1
+cp -a * "${DEMO_DIR}/everest-demo/" || exit 1
+cp -a .env "${DEMO_DIR}/everest-demo/.env" || exit 1
+tree "${DEMO_DIR}"
+
 cd "${DEMO_DIR}" || exit 1
 
-echo "Cloning EVerest from ${DEMO_REPO} into ${DEMO_DIR}/everest-demo"
-git clone --branch "${DEMO_BRANCH}" "${DEMO_REPO}" everest-demo
+# echo "Cloning EVerest from ${DEMO_REPO} into ${DEMO_DIR}/everest-demo"
+# git clone --branch "${DEMO_BRANCH}" "${DEMO_REPO}" everest-demo
 
 if [[ "$DEMO_VERSION" =~ sp1 ]]; then
 	echo "Adding charge station with Security Profile 1 to CSMS (note: profiles in MaEVe start with 0 so SP-0 == OCPP SP-1)"
@@ -128,11 +136,11 @@ docker compose -p $PROJECT --file "${DEMO_COMPOSE_FILE_NAME}" up -d --wait
 docker compose -p $PROJECT cp config-sil-ocpp201-pnc.yaml manager:/ext/source/config/config-sil-ocpp201-pnc.yaml
 
 if [[ "$DEMO_VERSION" =~ sp2 || "$DEMO_VERSION" =~ sp3 ]]; then
-	docker compose -p $PROJECT cp manager/eonti_certs.tar.gz manager:/ext/source/build/certs.tar.gz
+	docker compose -p $PROJECT cp manager/patsec_certs.tar.gz manager:/ext/source/build/certs.tar.gz
 	docker compose -p $PROJECT exec manager /bin/bash -c "pushd /ext/source/build && tar xf certs.tar.gz"
 
 	echo "Configured everest certs, validating that the chain is set up correctly"
-	docker compose -p $PROJECT manager /bin/bash -c "pushd /ext/source/build && openssl verify -show_chain -CAfile dist/etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem --untrusted dist/etc/everest/certs/ca/csms/CPO_SUB_CA1.pem --untrusted dist/etc/everest/certs/ca/csms/CPO_SUB_CA2.pem dist/etc/everest/certs/client/csms/CSMS_LEAF.pem"
+	docker compose -p $PROJECT exec manager /bin/bash -c "pushd /ext/source/build && openssl verify -show_chain -CAfile dist/etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem --untrusted dist/etc/everest/certs/ca/csms/CPO_SUB_CA1.pem --untrusted dist/etc/everest/certs/ca/csms/CPO_SUB_CA2.pem dist/etc/everest/certs/client/csms/CSMS_LEAF.pem"
 fi
 
 if [[ "$DEMO_VERSION" =~ sp1 ]]; then
@@ -145,7 +153,7 @@ elif [[ "$DEMO_VERSION" =~ sp2 ]]; then
 		manager:/ext/source/build/dist/share/everest/modules/OCPP201/device_model_storage.db
 elif [[ "$DEMO_VERSION" =~ sp3 ]]; then
 	echo "Copying device DB, configured to SecurityProfile: 3"
-	docker compose -p $PROJECT cp manager/device_model_storage_maeve_sp3.db \
+	docker compose -p $PROJECT cp manager/device_model_storage_maeve_sp3_external.db \
 		manager:/ext/source/build/dist/share/everest/modules/OCPP201/device_model_storage.db
 fi
 
