@@ -135,11 +135,11 @@ docker compose -p $PROJECT --file "${DEMO_COMPOSE_FILE_NAME}" up -d --wait
 docker compose -p $PROJECT cp config-sil-ocpp201-pnc.yaml manager:/ext/source/config/config-sil-ocpp201-pnc.yaml
 
 if [[ "$DEMO_VERSION" =~ sp2 || "$DEMO_VERSION" =~ sp3 ]]; then
-	docker compose -p $PROJECT cp manager/patsec_certs.tar.gz manager:/ext/source/build/certs.tar.gz
-	docker compose -p $PROJECT exec manager /bin/bash -c "pushd /ext/source/build && tar xf certs.tar.gz"
+	docker compose -p $PROJECT cp manager/patsec-certs.tgz manager:/ext/source/build/dist/etc/certs.tgz
+	docker compose -p $PROJECT exec manager /bin/bash -c "pushd /ext/source/build/dist/etc && tar xf certs.tgz"
 
 	echo "Configured everest certs, validating that the chain is set up correctly"
-	docker compose -p $PROJECT exec manager /bin/bash -c "pushd /ext/source/build && openssl verify -show_chain -CAfile dist/etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem --untrusted dist/etc/everest/certs/ca/csms/CPO_SUB_CA1.pem --untrusted dist/etc/everest/certs/ca/csms/CPO_SUB_CA2.pem dist/etc/everest/certs/client/csms/CSMS_LEAF.pem"
+	docker compose -p $PROJECT exec manager /bin/bash -c "pushd /ext/source/build && openssl verify -show_chain -CAfile dist/etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem --untrusted dist/etc/everest/certs/ca/cso/CPO_SUB_CA1.pem --untrusted dist/etc/everest/certs/ca/cso/CPO_SUB_CA2.pem dist/etc/everest/certs/client/csms/CSMS_LEAF.pem"
 fi
 
 if [[ "$DEMO_VERSION" =~ sp1 ]]; then
