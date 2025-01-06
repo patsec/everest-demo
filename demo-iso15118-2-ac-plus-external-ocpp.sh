@@ -3,20 +3,19 @@
 set -e
 
 DEMO_REPO="https://github.com/patsec/everest-demo.git"
-DEMO_BRANCH="mre_external_ocsp"
+DEMO_BRANCH="mre-external-ocpp"
 
 CSMS_URL="http://localhost:9410"
 
 PROJECT="everest-ac-demo"
+USE_LOCAL=false
 
-usage="usage: $(basename "$0") [-r <repo>] [-b <branch>] [-j|1|2|3|c] [-h]
+usage="usage: $(basename "$0") [-l] [-r <repo>] [-b <branch>] [-c <url>] [-|1|2|3] [-h]
 
 This script will run EVerest ISO 15118-2 AC charging with external OCPP demos.
 
-Pro Tip: to use a local copy of this everest-demo repo, provide the current
-directory to the -r option (e.g., '-r \$(pwd)').
-
 where:
+    -l   Use local copy of repo (e.g., for demo development and testing)
     -r   URL to everest-demo repo to use (default: $DEMO_REPO)
     -b   Branch of everest-demo repo to use (default: $DEMO_BRANCH)
     -c   URL to CSMS (default: $CSMS_URL)
@@ -29,8 +28,9 @@ DEMO_VERSION=
 DEMO_COMPOSE_FILE_NAME=
 
 # loop through positional options/arguments
-while getopts ':r:b:c:123h' option; do
+while getopts ':lr:b:c:123h' option; do
 	case "$option" in
+	l) USE_LOCAL=true ;;
 	r) DEMO_REPO="$OPTARG" ;;
 	b) DEMO_BRANCH="$OPTARG" ;;
 	c) CSMS_URL="$OPTARG" ;;
@@ -83,21 +83,28 @@ delete_temporary_directory() {
 
 trap delete_temporary_directory EXIT
 
-echo "DEMO REPO:    $DEMO_REPO"
-echo "DEMO BRANCH:  $DEMO_BRANCH"
+if ! ${USE_LOCAL}; then
+	echo "DEMO REPO:    $DEMO_REPO"
+	echo "DEMO BRANCH:  $DEMO_BRANCH"
+fi
+
 echo "DEMO VERSION: $DEMO_VERSION"
 echo "DEMO CONFIG:  $DEMO_COMPOSE_FILE_NAME"
 echo "DEMO DIR:     $DEMO_DIR"
 echo "CSMS URL:     $CSMS_URL"
 
-mkdir "${DEMO_DIR}/everest-demo" || exit 1
-cp -a * "${DEMO_DIR}/everest-demo/" || exit 1
-cp -a .env "${DEMO_DIR}/everest-demo/.env" || exit 1
+if ${USE_LOCAL}; then
+	mkdir "${DEMO_DIR}/everest-demo" || exit 1
+	cp -a * "${DEMO_DIR}/everest-demo/" || exit 1
+	cp -a .env "${DEMO_DIR}/everest-demo/.env" || exit 1
+fi
 
 cd "${DEMO_DIR}" || exit 1
 
-# echo "Cloning EVerest from ${DEMO_REPO} into ${DEMO_DIR}/everest-demo"
-# git clone --branch "${DEMO_BRANCH}" "${DEMO_REPO}" everest-demo
+if ! ${USE_LOCAL}; then
+	echo "Cloning EVerest from ${DEMO_REPO} into ${DEMO_DIR}/everest-demo"
+	git clone --branch "${DEMO_BRANCH}" "${DEMO_REPO}" everest-demo
+fi
 
 if [[ "$DEMO_VERSION" =~ sp1 ]]; then
 	echo "Adding charge station with Security Profile 1 to CSMS (note: profiles in MaEVe start with 0 so SP-0 == OCPP SP-1)"
